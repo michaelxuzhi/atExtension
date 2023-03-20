@@ -1,0 +1,21 @@
+{
+    "name": "new At",
+    "description": "new at",
+    "version": "1.0",
+    "manifest_version": 2,
+    "permissions": ["tabs", "http://*/*", "https://*/*"],
+    "devtools_page": "pannel.html",
+
+    "content_scripts": [
+        {
+            "matches": ["<all_urls>"],
+            "js": ["js/content_script.js"],
+            "run_at": "document_start"
+        },
+        {
+            "matches": ["*://*/*.png", "*://*/*.jpg", "*://*/*.gif", "*://*/*.bmp"],
+            "js": ["js/content_script.js"]
+        }
+    ],
+    "web_accessible_resources": ["js/inject.js"]
+}
