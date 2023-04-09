@@ -5,6 +5,9 @@
     "manifest_version": 2,
     "permissions": ["tabs", "http://*/*", "https://*/*"],
     "devtools_page": "pannel.html",
+    "background": {
+        "page": "background.html"
+    },
 
     "content_scripts": [
         {
@@ -17,5 +20,5 @@
             "js": ["js/content_script.js"]
         }
     ],
-    "web_accessible_resources": ["js/inject.js"]
+    "web_accessible_resources": ["js/inject.js", "js/app.js"]
 }

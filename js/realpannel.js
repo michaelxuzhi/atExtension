@@ -23,52 +23,31 @@ btn3.addEventListener('click', () => {
 // 发送普通消息到content-script
 function sendMessageToContentScriptByPostMessage(data = 'devtool') {
     console.log('这是devtool-sendMsg2Content');
-    // 第一种，失败
-    // chrome.runtime.sendMessage(
-    //     { greeting: data || '你好，我是devtool呀，我主动发消息给后台！' },
-    //     function (response) {
-    //         console.log('inject-收到', response);
-    //     }
-    // );
-    // 第二种，失败
-    // window.postMessage({ cmd: 'invoke', code: '这是devtool-sendMsg2Content' }, '*');
     // 第三种
     // chrome.devtools.inspectedWindow.eval(`console.log('这是devtool')`);
     chrome.devtools.inspectedWindow.eval(`globalFuc('realPannel咯')`);
+    // cursor-建议
+    // 在devtools.js中发送消息
+    // chrome.runtime.sendMessage({
+    //     type: 'FROM_DEVTOOLS',
+    //     message: 'Hello from the devtools!',
+    // });
 }
 
-// 加入消息监听
-window.addEventListener(
-    'message',
-    function (e) {
-        console.log('收到消息：', e.data);
-        text.innerText = '收到消息-window.addeventlistener';
-        // if (e.data && e.data.cmd == 'invoke') {
-        //     eval('(' + e.data.code + ')');
-        // } else if (e.data && e.data.cmd == 'message') {
-        //     tip(e.data.data);
-        // }
-    },
-    false
-);
+// devtools中监听-接收消息
+chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
+    // console.log('收到消息');
+    if (message.type === 'FROM_CONTENT_SCRIPT') {
+        console.log('Message received from content script:');
+        console.log(message.message);
+        text.innerText = '收到消息-runtime' + message.message;
+    }
+});
 
-chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
-    // console.log(
-    //     '收到来自 ' +
-    //         (sender.tab
-    //             ? 'content-script(' + sender.tab.url + ')'
-    //             : 'popup或者background') +
-    //         ' 的消息：',
-    //     request
-    // );
-    // if (request.cmd == 'update_font_size') {
-    //     var ele = document.createElement('style');
-    //     ele.innerHTML = `* {font-size: ${request.size}px !important;}`;
-    //     document.head.appendChild(ele);
-    // } else {
-    //     tip(JSON.stringify(request));
-    //     sendResponse('我收到你的消息了：' + JSON.stringify(request));
-    // }
-    console.log('收到消息');
-    text.innerText = '收到消息-runtime' + JSON.stringify(request);
+// devtools.js
+// 和background建立长连接
+var port = chrome.runtime.connect({ name: 'devtools' });
+port.postMessage({ tabId: chrome.devtools.inspectedWindow.tabId });
+port.onMessage.addListener(function (msg) {
+    console.log('收到来自后台的消息：', msg);
 });

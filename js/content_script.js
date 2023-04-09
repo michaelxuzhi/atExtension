@@ -4,6 +4,7 @@ console.log('这是content script!');
 document.addEventListener('DOMContentLoaded', function () {
     // 注入自定义JS
     injectCustomJs();
+    injectCustomJs('./js/app.js');
     initCustomPanel();
     initCustomEventListen();
 });
@@ -23,28 +24,30 @@ window.addEventListener(
 );
 
 // 向页面注入JS
-function injectCustomJs(jsPath) {
-    jsPath = './js/inject.js';
+function injectCustomJs(jp = '') {
+    let jsPath = jp || './js/inject.js';
     var temp = document.createElement('script');
     temp.setAttribute('type', 'text/javascript');
     // 获得的地址类似：chrome-extension://ihcokhadfjfchaeagdoclpnjdiokfakg/js/inject.js
-    // temp.src = chrome.runtime.getURL(jsPath);
-    temp.src = 'chrome-extension://lojombaocanmlckggfpogajenjndicfl/js/inject.js';
+    temp.src = chrome.runtime.getURL(jsPath);
+    // temp.src = 'chrome-extension://lojombaocanmlckggfpogajenjndicfl/js/inject.js';
     console.log(temp.src);
     document.body.appendChild(temp);
-    temp.onload = function () {
-        // 放在页面不好看，执行完后移除掉
-        this.parentNode.removeChild(this);
-    };
+    // temp.onload = function () {
+    //     // 放在页面不好看，执行完后移除掉
+    //     this.parentNode.removeChild(this);
+    // };
 }
 
 // 向页面注入html
 function initCustomPanel() {
     var panel = document.createElement('div');
+    // panel.id = 'app';
     panel.className = 'chrome-plugin-demo-panel';
     panel.innerHTML = `
 		<h2>injected-script操作content-script演示区：</h2>
 		<div class="btn-area" style="position:absolute;background-color:white">
+            <div id="root" style="width:100%;hight:100%"></div>
 			<a href="javascript:sendMessageToContentScriptByPostMessage('你好，我是普通页面！')">通过postMessage发送消息给content-script</a><br>
 			<a href="javascript:sendMessageToContentScriptByEvent('你好啊！我是通过DOM事件发送的消息！')">通过DOM事件发送消息给content-script</a><br>
 			<a href="javascript:invokeContentScript('sendMessageToBackground()')">发送消息到后台或者popup</a><br>
@@ -53,37 +56,41 @@ function initCustomPanel() {
 		</div>
 	`;
     document.body.appendChild(panel);
+    sendMessageToBackground();
 }
 
 // 接收来自后台的消息
-chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
-    console.log(
-        '收到来自 ' +
-            (sender.tab
-                ? 'content-script(' + sender.tab.url + ')'
-                : 'popup或者background') +
-            ' 的消息：',
-        request
-    );
-    if (request.cmd == 'update_font_size') {
-        var ele = document.createElement('style');
-        ele.innerHTML = `* {font-size: ${request.size}px !important;}`;
-        document.head.appendChild(ele);
-    } else {
-        tip(JSON.stringify(request));
-        sendResponse('我收到你的消息了：' + JSON.stringify(request));
+chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
+    if (message.type === 'FROM_DEVTOOLS') {
+        console.log('Message received from devtools:');
+        console.log(message.message);
     }
+    console.log(message);
+});
+
+// cursor建议
+// content-script.js
+chrome.runtime.onConnect.addListener(function (port) {
+    console.assert(port.name == 'content-script');
+    port.onMessage.addListener(function (message) {
+        console.log('收到来自content-script的消息：', message);
+        port.postMessage({ greeting: '你好，devtools！' });
+    });
+    // 发送消息给后台
+    chrome.runtime.sendMessage(
+        { greeting: '你好，我是content-script呀，我主动发消息给后台！' },
+        function (response) {
+            console.log('收到来自后台的回复：', response);
+        }
+    );
 });
 
 // 主动发送消息给后台
 // 要演示此功能，请打开控制台主动执行sendMessageToBackground()
 function sendMessageToBackground(message) {
-    chrome.runtime.sendMessage(
-        { greeting: message || '你好，我是content-script呀，我主动发消息给后台！' },
-        function (response) {
-            tip('收到来自后台的回复：' + response);
-        }
-    );
+    chrome.runtime.sendMessage({
+        type: 'exec',
+    });
 }
 
 // 监听长连接
